@@ -72,10 +72,11 @@
           for(i=0; i<finalkeys.length; i++) {
             final[finalkeys[i]] = {};
             final[finalkeys[i]]['Notification ID'] = users[finalkeys[i]];
-            final[finalkeys[i]]['Date Unsubscribed'] = users[finalkeys[i]];
+            final[finalkeys[i]]['Date Unsubscribed'] = dates[finalkeys[i]];
           }
           console.log(users);
-          eventTable.MPTable('setData', users);
+          console.log(final);
+          eventTable.MPTable('setData', final);
         }
         
         runQuery();
