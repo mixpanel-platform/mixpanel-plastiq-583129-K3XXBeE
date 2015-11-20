@@ -51,15 +51,11 @@
               var lowkeys = Object.keys(results[keys[i]][subkeys[j]]);
               for(k=0; k<lowkeys.length; k++) {
                 if(results[keys[i]][subkeys[j]][lowkeys[k]] == 1) {
-                  if(subkeys[j] in Object.keys(users)) {
-                    //do comparison
-                  } else {
-                    users[subkeys[j]] = {};
-                    users[subkeys[j]][keys[i]] = lowkeys[k]};
-                  }
+                  users[subkeys[j]] = [keys[i]];
                 }
               }
             }
+          }
           console.log(users);
           var final = {}
           var finalkeys = Object.keys(users);
