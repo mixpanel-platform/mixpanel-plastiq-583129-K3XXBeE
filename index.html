@@ -30,7 +30,8 @@
             type: 'general',
             where: 'defined (user["$unsubscribed"]) and defined (user["$email"])',
             to: dateRange.to.toISOString().substring(0, 10),
-            from: dateRange.from.toISOString().substring(0, 10)
+            from: dateRange.from.toISOString().substring(0, 10),
+            limit: 100000
           };
 
           MP.api.query('/api/2.0/segmentation/multiseg', params, {dataType: 'json'})
