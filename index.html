@@ -44,17 +44,35 @@
         
         var doResults = function(results) {
           var keys = Object.keys(results);
-          var users = {}
+          var users = {};
+          var dates = {};
           for(i=0; i<keys.length; i++) {
             var subkeys = Object.keys(results[keys[i]]);
             for(j=0; j<subkeys.length; j++) {
               var lowkeys = Object.keys(results[keys[i]][subkeys[j]]);
               for(k=0; k<lowkeys.length; k++) {
                 if(results[keys[i]][subkeys[j]][lowkeys[k]] == 1) {
-                  users[subkeys[j]] = [keys[i]];
+                  if(dates.hasOwnProperty(subkeys[j])) {
+                    if(lowkeys[k] > dates[subkeys[j]]) {
+                      users[subkeys[j]] = Number([keys[i]]);
+                      dates[subkeys[j]] = lowkeys[k];
+                      console.log("Updating a date.");
+                    }
+                  } else {
+                    console.log("Creating new records");
+                    users[subkeys[j]] = Number([keys[i]]);
+                    dates[subkeys[j]] = lowkeys[k];
+                  }
                 }
               }
             }
+          }
+          var final = {};
+          var finalkeys = Object.keys(users);
+          for(i=0; i<finalkeys.length; i++) {
+            final[finalkeys[i]] = {};
+            final[finalkeys[i]]['Notification ID'] = users[finalkeys[i]];
+            final[finalkeys[i]]['Date Unsubscribed'] = users[finalkeys[i]];
           }
           console.log(users);
           eventTable.MPTable('setData', users);
