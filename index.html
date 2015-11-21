@@ -21,6 +21,7 @@
         });
 
         var runQuery = function() {
+          $('#table').empty();
           var dateRange = dateSelect.MPDatepicker('value');
           
           var params = {
@@ -30,7 +31,7 @@
             type: 'general',
             where: 'defined (user["$unsubscribed"]) and defined (user["$email"]) and (string(properties["message_type"]) == "email")',
             to: moment(),
-            from: '2015-11-19',//dateRange.from.toISOString().substring(0, 10),
+            from: dateRange.from.toISOString().substring(0, 10),
             limit: 10000
           };
           
