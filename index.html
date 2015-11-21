@@ -11,7 +11,6 @@
       <div style="clear: both;"></div>
     </div>
     <input type="submit" name="submit" value="Export" style="font-weight: bold; color: rgb(95,105,131); font-size: 12px; height: 31px; padding: 0 10px; margin-left: 10px; border: 1px solid rgb(201,209,219); background-color: rgb(242,244,246)" onclick="exportToCSV()">
-    <div id="export" style="float: left;" onclick="exportToCSV()">Export</div>
     <div style="clear: both;"></div>
     <div id="table"></div>
     <script>
@@ -32,7 +31,7 @@
             type: 'general',
             where: 'defined (user["$unsubscribed"]) and defined (user["$email"]) and (string(properties["message_type"]) == "email")',
             to: moment(),
-            from: dateRange.from.toISOString().substring(0, 10),
+            from: moment().subtract(7, 'days'), //dateRange.from.toISOString().substring(0, 10),
             limit: 10000
           };
           
