@@ -10,9 +10,10 @@
       <div id="dateSelect" style="float: right;"></div>
       <div style="clear: both;"></div>
     </div>
+    <div id="export" style="float: left;" onclick="exportToCSV()">Export</div>
+    <div style="clear: both;"></div>
     <div id="table"></div>
     <script>
-      MP.api.ready(function() {
         var dateSelect  = $('#dateSelect').MPDatepicker();
         var eventTable  = $('#table').MPTable({
           showPercentages: true,
@@ -24,67 +25,220 @@
           
           var params = {
             event: '$campaign_delivery',
-            inner: 'user["$email"]',
-            outer: 'properties["campaign_id"]',
+            on: 'user["$email"]',
             unit: 'day',
             type: 'general',
-            where: 'defined (user["$unsubscribed"]) and defined (user["$email"])',
-            to: dateRange.to.toISOString().substring(0, 10),
-            from: dateRange.from.toISOString().substring(0, 10),
+            where: 'defined (user["$unsubscribed"]) and defined (user["$email"]) and (string(properties["message_type"]) == "email")',
+            to: moment(),
+            from: '2015-11-19',//dateRange.from.toISOString().substring(0, 10),
             limit: 10000
           };
-
-          MP.api.query('/api/2.0/segmentation/multiseg', params, {dataType: 'json'})
-          .done(function(results) {
-            data = results['data']['values'];
-            console.log(data);
-            doResults(data);
-            //processResults(data, slices);
+          
+          promiselist = [];
+          promiselist.push(MP.api.query('/api/2.0/segmentation/', params, {dataType: 'json'}).done(function(results){ return results['data']['values']; }));
+        
+          Promise.all(promiselist).then(function(promiseArray){
+            console.log(promiseArray);
+            doResults(promiseArray, params);
           });
         };
         
-        var doResults = function(results) {
-          var keys = Object.keys(results);
+        var doResults = function(results, params) {
+          console.log(results[0]['data']['values']);
+          var emails = Object.keys(results[0]['data']['values']);
+          console.log(emails);
+          promiselist = [];
+          for(x in emails) {
+            params['on'] = 'properties["campaign_id"]';
+            params['where'] = 'defined (user["$unsubscribed"]) and defined (user["$email"]) and (string(properties["message_type"]) == "email") and (string(user["$email"]) == "' + emails[x] + '")';
+            promiselist.push(MP.api.query('/api/2.0/segmentation/', params, {dataType: 'json'}).done(function(results){ return results['data']['values']; }));
+          }
           var users = {};
           var dates = {};
-          for(i=0; i<keys.length; i++) {
-            var subkeys = Object.keys(results[keys[i]]);
-            for(j=0; j<subkeys.length; j++) {
-              var lowkeys = Object.keys(results[keys[i]][subkeys[j]]);
-              for(k=0; k<lowkeys.length; k++) {
-                if(results[keys[i]][subkeys[j]][lowkeys[k]] == 1) {
-                  if(dates.hasOwnProperty(subkeys[j])) {
-                    if(lowkeys[k] > dates[subkeys[j]]) {
-                      users[subkeys[j]] = Number([keys[i]]);
-                      dates[subkeys[j]] = lowkeys[k];
-                      console.log("Updating a date.");
+          var final = {};
+          Promise.all(promiselist).then(function(promiseArray){
+            console.log(promiseArray);
+            for(y in promiseArray){
+              console.log(promiseArray[y]['data']['values']);
+              var current = promiseArray[y]['data']['values'];
+              var keys = Object.keys(current);
+              for(i=0; i<keys.length; i++) {
+                var subkeys = Object.keys(current[keys[i]]);
+                for(k=0; k<subkeys.length; k++) {
+                  if(current[keys[i]][subkeys[k]] == 1) {
+                    if(dates.hasOwnProperty(subkeys[k])) {
+                      if(subkeys[k] > dates[subkeys[k]]) {
+                        users[emails[y]] = Number([keys[i]]);
+                        dates[emails[y]] = subkeys[k];
+                        console.log("Updating a date.");
+                      }
+                    } else {
+                      users[emails[y]] = Number([keys[i]]);
+                      dates[emails[y]] = subkeys[k];
+                      console.log("Creating new records");
                     }
-                  } else {
-                    console.log("Creating new records");
-                    users[subkeys[j]] = Number([keys[i]]);
-                    dates[subkeys[j]] = lowkeys[k];
                   }
                 }
               }
             }
+            var finalkeys = Object.keys(users);
+            for(i=0; i<finalkeys.length; i++) {
+              final[finalkeys[i]] = {};
+              final[finalkeys[i]]['Notification ID'] = users[finalkeys[i]];
+              final[finalkeys[i]]['Date Unsubscribed'] = dates[finalkeys[i]];
+            }
+            console.log(users);
+            console.log(final);
+            graphResults(final);
+            //eventTable.MPTable('setData', final);
+            //doResults(promiseArray, params);
+          });
+        }
+        
+        var graphResults = function(final) {
+          //write the headers first
+          var append_data = '<tr>';
+          append_data = append_data + '<td>' + 'Email' + '</td>';
+          append_data = append_data + '<td>' + 'Notification ID' + '</td>';
+          append_data = append_data + '<td>' + 'Date Unsubscribed' + '</td>';
+          append_data = append_data + '</tr>';
+          $('#table').append(append_data);
+          
+          //now write each user
+          var users = Object.keys(final);
+          for(i=0; i<users.length; i++) {
+            var append_data = '<tr>';
+            append_data = append_data + '<td>' + users[i] + '</td>';
+            var subkeys = Object.keys(final[users[i]])
+            for(j=0; j<subkeys.length; j++) {
+              append_data = append_data + '<td>' + final[users[i]][subkeys[j]] + '</td>';
+            }
+            append_data = append_data + '</tr>';
+            $('#table').append(append_data);
           }
-          var final = {};
-          var finalkeys = Object.keys(users);
-          for(i=0; i<finalkeys.length; i++) {
-            final[finalkeys[i]] = {};
-            final[finalkeys[i]]['Notification ID'] = users[finalkeys[i]];
-            final[finalkeys[i]]['Date Unsubscribed'] = dates[finalkeys[i]];
-          }
-          console.log(users);
-          console.log(final);
-          eventTable.MPTable('setData', final);
         }
         
         runQuery();
         
         dateSelect.on('change', runQuery);
         
-      });
+        // Export to csv
+       function exportToCSV() {
+        var csv = $("#table").table2CSV({delivery:'string'});
+        download(csv, "export.csv", "text/csv");
+       }
+  
+       // Table2CSV
+       jQuery.fn.table2CSV = function(options) {
+           var options = jQuery.extend({
+               separator: ',',
+               header: [],
+               delivery: 'popup' // popup, value
+           },
+           options);
+  
+           var csvData = [];
+           var headerArr = [];
+           var el = this;
+  
+           //header
+           var numCols = options.header.length;
+           var tmpRow = []; // construct header avalible array
+  
+           if (numCols > 0) {
+               for (var i = 0; i < numCols; i++) {
+                   tmpRow[tmpRow.length] = formatData(options.header[i]);
+               }
+           } else {
+               $(el).filter(':visible').find('th').each(function() {
+                   if ($(this).css('display') != 'none') tmpRow[tmpRow.length] = formatData($(this).html());
+               });
+           }
+  
+           row2CSV(tmpRow);
+  
+           // actual data
+           $(el).find('tr').each(function() {
+               var tmpRow = [];
+               $(this).filter(':visible').find('td').each(function() {
+                   if ($(this).css('display') != 'none') tmpRow[tmpRow.length] = formatData($(this).html());
+               });
+               row2CSV(tmpRow);
+           });
+           if (options.delivery == 'popup') {
+               var mydata = csvData.join('\n');
+               return popup(mydata);
+           } else {
+               var mydata = csvData.join('\n');
+               return mydata;
+           }
+  
+           function row2CSV(tmpRow) {
+               var tmp = tmpRow.join('') // to remove any blank rows
+               // alert(tmp);
+               if (tmpRow.length > 0 && tmp != '') {
+                   var mystr = tmpRow.join(options.separator);
+                   csvData[csvData.length] = mystr;
+               }
+           }
+           function formatData(input) {
+               // replace " with â€œ
+               var regexp = new RegExp(/["]/g);
+               var output = input.replace(regexp, "â€œ");
+               //HTML
+               var regexp = new RegExp(/\<[^\<]+\>/g);
+               var output = output.replace(regexp, "");
+               if (output == "") return '';
+               return '"' + output + '"';
+           }
+           function popup(data) {
+               var generator = window.open('', 'csv', 'height=400,width=600');
+               generator.document.write('<html><head><title>CSV</title>');
+               generator.document.write('</head><body >');
+               generator.document.write('<textArea cols=70 rows=15 wrap="off" >');
+               generator.document.write(data);
+               generator.document.write('</textArea>');
+               generator.document.write('</body></html>');
+               generator.document.close();
+               return true;
+           }
+       };
+  
+       // Code to download the CSV
+       function download(strData, strFileName, strMimeType) {
+           var D = document,
+               a = D.createElement("a");
+               strMimeType= strMimeType || "application/octet-stream";
+  
+  
+           if (navigator.msSaveBlob) { // IE10
+               return navigator.msSaveBlob(new Blob([strData], {type: strMimeType}), strFileName);
+           } /* end if(navigator.msSaveBlob) */
+  
+  
+           if ('download' in a) { //html5 A[download]
+               a.href = "data:" + strMimeType + "," + encodeURIComponent(strData);
+               a.setAttribute("download", strFileName);
+               a.innerHTML = "downloading...";
+               D.body.appendChild(a);
+               setTimeout(function() {
+                   a.click();
+                   D.body.removeChild(a);
+               }, 66);
+               return true;
+           } /* end if('download' in a) */
+  
+  
+           //do iframe dataURL download (old ch+FF):
+           var f = D.createElement("iframe");
+           D.body.appendChild(f);
+           f.src = "data:" +  strMimeType   + "," + encodeURIComponent(strData);
+  
+           setTimeout(function() {
+               D.body.removeChild(f);
+           }, 333);
+           return true;
+       } /* end download() */
     </script>
   </body>
 </html>
