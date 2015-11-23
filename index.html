@@ -30,8 +30,8 @@
             unit: 'day',
             type: 'general',
             where: 'defined (user["$unsubscribed"]) and defined (user["$email"]) and (string(properties["message_type"]) == "email")',
-            to: moment(),
-            from: moment().subtract(7, 'days'), //dateRange.from.toISOString().substring(0, 10),
+            to: dateRange.to.toISOString().substring(0, 10),
+            from: dateRange.from.toISOString().substring(0, 10),
             limit: 10000
           };
           
