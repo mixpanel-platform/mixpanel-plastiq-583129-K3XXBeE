@@ -30,7 +30,7 @@
             unit: 'day',
             type: 'general',
             where: 'defined (user["$unsubscribed"]) and defined (user["$email"]) and (string(properties["message_type"]) == "email")',
-            to: dateRange.to.toISOString().substring(0, 10),
+            to: moment(), //dateRange.to.toISOString().substring(0, 10),
             from: '2015-10-01', //dateRange.from.toISOString().substring(0, 10),
             limit: 10000
           };
